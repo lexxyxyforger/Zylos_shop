@@ -2,6 +2,10 @@
 
 @section('title', $store->name . ' | ZYLOS')
 
+@php
+$brandLogo = 'https://img.sanishtech.com/u/7bff45bea5098b102ff2d2be40ee0b4d.png';
+@endphp
+
 @push('head')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -143,38 +147,6 @@ body {
 </style>
 @endpush
 
-@section('navbar')
-<header class="sticky top-0 z-50 border-b border-white/40 backdrop-blur-md bg-white/80">
-    <div class="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center gap-3">
-            <div class="h-10 w-10 overflow-hidden rounded-xl bg-gray-100 ring-1 ring-slate-200">
-                <img src="{{ $store->logo ?: 'https://placehold.co/160x160/e2e8f0/334155?text=Z' }}"
-                    alt="Logo {{ $store->name }}" class="h-full w-full object-cover" loading="lazy" decoding="async">
-            </div>
-            <div>
-                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Official Store</p>
-                <h1 class="text-sm font-bold sm:text-base">{{ $store->name }}</h1>
-            </div>
-        </div>
-
-        <nav class="flex items-center gap-2 text-sm font-semibold">
-            <a href="{{ route('checkout.index') }}"
-                class="hidden rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow sm:block">Checkout</a>
-            @guest
-            <a href="{{ route('login') }}"
-                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow">Sign
-                In</a>
-            <a href="{{ route('register') }}"
-                class="rounded-full bg-slate-900 px-3 py-1 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow">Sign
-                Up</a>
-            @else
-            <a href="{{ route('admin.dashboard') }}"
-                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow">Admin</a>
-            @endguest
-        </nav>
-    </div>
-</header>
-@endsection
 
 @section('content')
 <div
@@ -200,8 +172,8 @@ body {
                 <div class="flex items-start gap-4 sm:items-center sm:gap-5">
                     <div
                         class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-white ring-1 ring-cyan-100 sm:h-24 sm:w-24">
-                        <img src="{{ $store->logo ?: 'https://placehold.co/240x240/e2e8f0/334155?text=ZYLOS' }}"
-                            alt="{{ $store->name }}" class="h-full w-full object-cover" loading="lazy" decoding="async">
+                        <img src="{{ $store->logo ?: $brandLogo }}" alt="{{ $store->name }}"
+                            class="h-full w-full object-cover" loading="lazy" decoding="async">
                     </div>
 
                     <div class="min-w-0 space-y-2">
@@ -240,13 +212,22 @@ body {
 
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">Collection V2</p>
+                    <p class="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">Collection </p>
                     <h3 class="text-2xl font-extrabold tracking-tight text-slate-900">Pilihan Produk Premium</h3>
                 </div>
                 <div class="flex items-center gap-2 text-xs font-semibold">
-                    <span class="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm">Trending</span>
-                    <span class="rounded-full bg-white px-3 py-1 text-slate-600 shadow-sm">Newest</span>
-                    <span class="rounded-full bg-slate-900 px-3 py-1 text-white shadow-sm">Luxury Picks</span>
+                    <a href="{{ route('store.index', ['collection' => 'trending']) }}#product-grid"
+                        class="rounded-full px-3 py-1 shadow-sm transition {{ $activeCollection === 'trending' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100' }}">
+                        Trending
+                    </a>
+                    <a href="{{ route('store.index', ['collection' => 'newest']) }}#product-grid"
+                        class="rounded-full px-3 py-1 shadow-sm transition {{ $activeCollection === 'newest' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100' }}">
+                        Newest
+                    </a>
+                    <a href="{{ route('store.index', ['collection' => 'luxury']) }}#product-grid"
+                        class="rounded-full px-3 py-1 shadow-sm transition {{ $activeCollection === 'luxury' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100' }}">
+                        Luxury Picks
+                    </a>
                 </div>
             </div>
 

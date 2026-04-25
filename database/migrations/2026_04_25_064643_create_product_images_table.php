@@ -14,7 +14,7 @@ return new class extends Migration
     Schema::create('product_images', function (Blueprint $table) {
         $table->uuid('uuid')->primary();
         $table->uuid('product_id')->index(); // Relasi ke produk
-        $table->string('image'); // Path file gambar
+        $table->text('image'); // Path file gambar atau URL eksternal yang panjang
         $table->boolean('is_thumbnail')->default(false);
         $table->timestamps();
 
