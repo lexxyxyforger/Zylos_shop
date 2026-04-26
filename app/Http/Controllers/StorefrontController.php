@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Buyer;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\Store;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -21,10 +23,7 @@ class StorefrontController extends Controller
             $activeCollection = 'luxury';
         }
 
-        $store = Store::query()
-            ->orderByDesc('is_verified')
-            ->latest()
-            ->first();
+        $store = Store::query()->orderByDesc('is_verified')->latest()->first();
 
         if (! $store) {
             $store = Store::make([
@@ -39,6 +38,7 @@ class StorefrontController extends Controller
 
         $productsQuery = Product::query()
             ->where('store_id', $store->uuid)
+            ->with('category:uuid,name,slug')
             ->select('products.*')
             ->addSelect([
                 'image' => ProductImage::query()
@@ -50,16 +50,11 @@ class StorefrontController extends Controller
             ]);
 
         if ($activeCollection === 'trending') {
-            $productsQuery
-                ->orderByDesc('stock')
-                ->orderByDesc('created_at');
+            $productsQuery->orderByDesc('stock')->orderByDesc('created_at');
         } elseif ($activeCollection === 'newest') {
             $productsQuery->latest();
         } else {
-            $productsQuery
-                ->where('price', '>', 0)
-                ->orderByDesc('price')
-                ->orderByDesc('created_at');
+            $productsQuery->where('price', '>', 0)->orderByDesc('price')->orderByDesc('created_at');
         }
 
         $products = $productsQuery
@@ -74,6 +69,11 @@ class StorefrontController extends Controller
                 'condition' => $product->condition,
                 'stock' => (int) $product->stock,
                 'url' => route('product.show', $product->slug),
+                'category' => $product->category ? [
+                    'uuid' => $product->category->uuid,
+                    'name' => $product->category->name,
+                    'slug' => $product->category->slug,
+                ] : null,
             ])
             ->values();
 
@@ -169,10 +169,7 @@ class StorefrontController extends Controller
     {
         $defaultBrandLogo = 'https://img.sanishtech.com/u/7bff45bea5098b102ff2d2be40ee0b4d.png';
 
-        $store = Store::query()
-            ->orderByDesc('is_verified')
-            ->latest()
-            ->first();
+        $store = Store::query()->orderByDesc('is_verified')->latest()->first();
 
         if (! $store) {
             $store = Store::make([
@@ -216,9 +213,7 @@ class StorefrontController extends Controller
                 ->all();
         }
 
-        return [
-            ['uuid' => null, 'label' => 'All Size', 'stock' => null],
-        ];
+        return [['uuid' => null, 'label' => 'All Size', 'stock' => null]];
     }
 
     private function cartItems(Request $request): array
@@ -260,25 +255,29 @@ class StorefrontController extends Controller
 
     private function orderItems(Request $request): array
     {
-        return collect($request->session()->get('orders', []))
-            ->take(5)
-            ->map(function (array $order) {
-                return [
-                    'id' => $order['id'] ?? 'ZYL-ORDER',
-                    'status' => $order['status'] ?? 'pending',
-                    'created_at' => $order['created_at'] ?? null,
-                    'total' => (float) ($order['total'] ?? 0),
-                    'items' => collect($order['items'] ?? [])
-                        ->map(fn (array $item) => [
-                            'name' => $item['name'] ?? 'Produk',
-                            'qty' => max(1, (int) ($item['qty'] ?? 1)),
-                            'image' => $item['image'] ?? null,
-                        ])
-                        ->values()
-                        ->all(),
-                ];
-            })
-            ->values()
+        $user = $request->user();
+        if (!$user) return [];
+
+        $buyerUuids = Buyer::where('user_id', $user->uuid)->pluck('uuid')->toArray();
+        $allIds = array_unique(array_merge($buyerUuids, [$user->uuid]));
+
+        return Transaction::whereIn('buyer_id', $allIds)
+            ->with(['details.product'])
+            ->latest()
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->code,
+                'status' => $t->payment_status === 'paid' ? 'paid' : ($t->payment_status === 'cancelled' ? 'cancelled' : 'pending'),
+                'total' => (float) $t->grand_total,
+                'created_at' => $t->created_at?->diffForHumans() ?? 'Just now',
+                'items' => $t->details->map(fn ($d) => [
+                    'name' => $d->product->name ?? 'Product Deleted',
+                    'qty' => $d->qty,
+                    'image' => $d->product
+                        ? (ProductImage::where('product_id', $d->product->uuid)->orderByDesc('is_thumbnail')->value('image') ?? 'https://placehold.co/900x900/e2e8f0/334155?text=')
+                        : 'https://placehold.co/900x900/e2e8f0/334155?text=',
+                ])->all(),
+            ])
             ->all();
     }
 }

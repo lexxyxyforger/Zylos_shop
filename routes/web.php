@@ -19,10 +19,11 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 Route::get('/', [StorefrontController::class, 'index'])->name('store.index');
-Route::get('/history', [StorefrontController::class, 'history'])->name('store.history');
 Route::get('/products/{slug}', [StorefrontController::class, 'show'])->name('product.show');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/history', [StorefrontController::class, 'history'])->name('store.history');
+
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
     Route::patch('/cart/items/{key}', [CartController::class, 'update'])->name('cart.items.update');
@@ -35,6 +36,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.process');
     Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -167,6 +172,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard.store-profile.update');
 
+    Route::get('/dashboard/products/create', function () {
+        return Inertia::render('Dashboard/ProductForm', [
+            'mode' => 'create',
+            'categories' => ProductCategory::query()
+                ->select(['uuid', 'name'])
+                ->orderBy('name')
+                ->get(),
+            'product' => null,
+        ]);
+    })->name('dashboard.products.create');
+
+    Route::get('/dashboard/products/{product:uuid}/edit', function (Request $request, Product $product) use ($getOrCreateStore) {
+        $store = $getOrCreateStore($request);
+
+        abort_unless($product->store_id === $store->uuid, 403);
+
+        $thumbnail = ProductImage::query()
+            ->where('product_id', $product->uuid)
+            ->where('is_thumbnail', true)
+            ->value('image');
+
+        $extraImages = ProductImage::query()
+            ->where('product_id', $product->uuid)
+            ->where('is_thumbnail', false)
+            ->orderByDesc('created_at')
+            ->pluck('image')
+            ->filter()
+            ->values();
+
+        return Inertia::render('Dashboard/ProductForm', [
+            'mode' => 'edit',
+            'categories' => ProductCategory::query()
+                ->select(['uuid', 'name'])
+                ->orderBy('name')
+                ->get(),
+            'product' => [
+                'uuid' => $product->uuid,
+                'name' => $product->name,
+                'about' => $product->about,
+                'condition' => $product->condition,
+                'price' => (float) $product->price,
+                'weight' => (int) $product->weight,
+                'stock' => (int) $product->stock,
+                'product_category_id' => $product->product_category_id,
+                'image' => $thumbnail,
+                'extra_images' => $extraImages,
+            ],
+        ]);
+    })->name('dashboard.products.edit');
+
     Route::post('/dashboard/products', function (Request $request) use ($getOrCreateStore, $serializeProduct) {
         $data = $request->validate([
             'name' => 'required|string|max:180',
@@ -177,6 +232,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'stock' => 'required|integer|min:0',
             'image_url' => 'nullable|url|max:1000',
             'image_file' => 'nullable|image|max:5120',
+            'extra_image_urls' => 'nullable|array|max:8',
+            'extra_image_urls.*' => 'nullable|url|max:1000',
+            'extra_image_files' => 'nullable|array|max:8',
+            'extra_image_files.*' => 'nullable|image|max:5120',
             'product_category_id' => 'required|uuid|exists:product_categories,uuid',
         ]);
 
@@ -219,9 +278,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]);
             }
 
+            $extraImages = collect($data['extra_image_urls'] ?? [])
+                ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+                ->values()
+                ->all();
+
+            foreach ($request->file('extra_image_files', []) as $file) {
+                if ($file) {
+                    $extraImages[] = Storage::url($file->store('products', 'public'));
+                }
+            }
+
+            foreach ($extraImages as $extraImage) {
+                ProductImage::query()->create([
+                    'product_id' => $product->uuid,
+                    'image' => $extraImage,
+                    'is_thumbnail' => false,
+                ]);
+            }
+
             return $product->fresh();
         });
-// cart
+
         return response()->json([
             'message' => 'Produk berhasil ditambahkan.',
             'product' => $serializeProduct($product),
@@ -243,6 +321,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'stock' => 'required|integer|min:0',
             'image_url' => 'nullable|url|max:1000',
             'image_file' => 'nullable|image|max:5120',
+            'extra_image_urls' => 'nullable|array|max:8',
+            'extra_image_urls.*' => 'nullable|url|max:1000',
+            'extra_image_files' => 'nullable|array|max:8',
+            'extra_image_files.*' => 'nullable|image|max:5120',
             'product_category_id' => 'required|uuid|exists:product_categories,uuid',
         ]);
 
@@ -281,6 +363,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 );
             }
 
+            $extraImages = collect($data['extra_image_urls'] ?? [])
+                ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+                ->values()
+                ->all();
+
+            foreach ($request->file('extra_image_files', []) as $file) {
+                if ($file) {
+                    $extraImages[] = Storage::url($file->store('products', 'public'));
+                }
+            }
+
+            ProductImage::query()
+                ->where('product_id', $product->uuid)
+                ->where('is_thumbnail', false)
+                ->delete();
+
+            foreach ($extraImages as $extraImage) {
+                ProductImage::query()->create([
+                    'product_id' => $product->uuid,
+                    'image' => $extraImage,
+                    'is_thumbnail' => false,
+                ]);
+            }
+
             return $product->fresh();
         });
 
@@ -307,12 +413,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ],
         ]);
     })->name('dashboard.products.destroy');
-});
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';

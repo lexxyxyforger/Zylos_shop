@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Store;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,9 +19,31 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $store = Store::query()->firstOrCreate(
+            ['user_id' => $request->user()->uuid],
+            [
+                'name' => 'ZYLOS Official',
+                'logo' => 'https://img.sanishtech.com/u/7bff45bea5098b102ff2d2be40ee0b4d.png',
+                'about' => 'Premium curated lifestyle products from ZYLOS.',
+                'city' => 'Bandung',
+                'address' => 'Jl. Braga No. 12',
+                'postal_code' => '40111',
+                'is_verified' => true,
+            ]
+        );
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'storeProfile' => [
+                'name' => $store->name,
+                'about' => $store->about,
+                'phone' => $store->phone,
+                'city' => $store->city,
+                'address' => $store->address,
+                'postal_code' => $store->postal_code,
+                'logo' => $store->logo,
+            ],
         ]);
     }
 

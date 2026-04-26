@@ -20,19 +20,20 @@ const props = defineProps({
     },
 });
 
-const fallbackImage = 'https://placehold.co/900x900/e2e8f0/334155?text=ZYLOS';
+const fallbackImage = null;
 const activeImage = ref(0);
 const quantity = ref(1);
 const saving = ref(false);
 const toast = ref(null);
 
 const imageList = computed(() => {
-    const orderedImages = [props.product.image || fallbackImage, ...(props.images || [])].filter(Boolean);
+    const orderedImages = [props.product.image, ...(props.images || [])].filter(Boolean);
     const uniqueImages = orderedImages.filter((image, index, list) => list.indexOf(image) === index);
 
-    return uniqueImages.length ? uniqueImages : [fallbackImage];
+    return uniqueImages;
 });
-const heroImage = computed(() => imageList.value[activeImage.value] || fallbackImage);
+
+const heroImage = computed(() => imageList.value[activeImage.value] || '');
 
 const availableSizes = computed(() =>
     props.sizes.length ? props.sizes : [{ uuid: null, label: 'All Size', stock: null }],

@@ -8,7 +8,6 @@ const props = defineProps({
     urls: { type: Object, required: true },
 });
 
-// State untuk Search & Filter
 const searchQuery = ref("");
 const statusFilter = ref("all");
 
@@ -20,7 +19,6 @@ const formatIDR = (price) =>
         maximumFractionDigits: 0,
     }).format(price || 0);
 
-// Filter Logic untuk semua history
 const filteredOrders = computed(() => {
     return props.orders.filter((order) => {
         const matchesSearch = order.id.toLowerCase().includes(searchQuery.value.toLowerCase());
@@ -58,11 +56,11 @@ const getStatusTheme = (status) => {
         <div class="fixed inset-0 overflow-hidden pointer-events-none">
             <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-cyan-500/10 rounded-full blur-[120px]"></div>
             <div class="absolute top-[60%] -right-[5%] w-[30%] h-[50%] bg-lime-400/5 rounded-full blur-[100px]"></div>
-            <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-50 contrast-150"></div>
+            <div class="absolute inset-0 opacity-20 brightness-50 contrast-150" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg')"></div>
         </div>
 
         <main class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            
+
             <header class="mb-12">
                 <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
@@ -77,7 +75,7 @@ const getStatusTheme = (status) => {
                             Accessing all deployment history records. Your verified purchases are securely stored in the ZYLOS encrypted archive.
                         </p>
                     </div>
-                    
+
                     <div class="flex items-center gap-3">
                         <Link :href="urls.home" class="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition backdrop-blur-xl group">
                             <span class="text-xs font-black uppercase tracking-widest flex items-center gap-2">
@@ -98,16 +96,16 @@ const getStatusTheme = (status) => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <input 
+                    <input
                         v-model="searchQuery"
-                        type="text" 
-                        placeholder="Search Deployment ID..." 
+                        type="text"
+                        placeholder="Search Deployment ID..."
                         class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:border-cyan-400 focus:ring-0 transition backdrop-blur-xl"
                     />
                 </div>
                 <div class="flex gap-2 p-1 bg-white/[0.03] border border-white/10 rounded-2xl backdrop-blur-xl">
-                    <button 
-                        v-for="status in ['all', 'paid', 'pending', 'cancelled']" 
+                    <button
+                        v-for="status in ['all', 'paid', 'pending', 'cancelled']"
                         :key="status"
                         @click="statusFilter = status"
                         class="px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition"
@@ -140,19 +138,16 @@ const getStatusTheme = (status) => {
                                 </td>
                                 <td class="px-8 py-6">
                                     <div class="flex -space-x-3">
-                                        <div v-for="item in order.items.slice(0, 3)" :key="item.name" class="relative group/img">
-                                            <img 
-                                                :src="item.image || 'https://placehold.co/80x80/e2e8f0/334155?text=Z'" 
+                                        <div v-for="item in order.items" :key="item.name" class="relative group/img">
+                                            <img
+                                                :src="item.image || 'https://placehold.co/80x80/e2e8f0/334155?text='"
                                                 class="w-10 h-10 rounded-full border-2 border-[#050B10] object-cover bg-zinc-900 grayscale group-hover/img:grayscale-0 transition duration-500"
                                             />
-                                        </div>
-                                        <div v-if="order.items.length > 3" class="w-10 h-10 rounded-full border-2 border-[#050B10] bg-white/10 flex items-center justify-center text-[10px] font-black backdrop-blur-md">
-                                            +{{ order.items.length - 3 }}
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-8 py-6">
-                                    <div 
+                                    <div
                                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest shadow-sm"
                                         :class="getStatusTheme(order.status).bg"
                                     >
@@ -205,14 +200,6 @@ const getStatusTheme = (status) => {
 </template>
 
 <style scoped>
-.line-clamp-1 {
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Custom Scrollbar for dark theme */
 .overflow-x-auto::-webkit-scrollbar {
     height: 6px;
 }
